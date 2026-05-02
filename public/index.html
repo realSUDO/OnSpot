@@ -131,8 +131,11 @@
             const user = await uRes.json();
             console.log('[callback] user:', user);
             saveAuth(data.access_token, data.refresh_token, user);
+            window.history.replaceState({}, '', '/');
+            location.reload();
+          } else {
+            window.history.replaceState({}, '', '/');
           }
-          window.history.replaceState({}, '', '/');
         }
       })();
 
