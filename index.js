@@ -90,14 +90,20 @@ async function main() {
 
   await kafkaConsumer.subscribe({
     topics: ['location-updates'],
-    fromBeginning: true,
+    fromBeginning: false,
   });
+
+  const activeUsers = new Map(); // userId/socketId -> { lastSeen, data }
 
   kafkaConsumer.run({
     eachMessage: async ({ topic, partition, message, heartbeat }) => {
       const data = JSON.parse(message.value.toString());
+      const key = data.userId || data.socketId;
+      
+      activeUsers.set(key, { lastSeen: Date.now(), data });
+      
       io.emit('server:location:update', {
-        id: data.id,
+        id: key,
         name: data.name,
         latitude: data.latitude,
         longitude: data.longitude,
@@ -106,11 +112,26 @@ async function main() {
     },
   });
 
+  // Remove stale users every 30 seconds
+  setInterval(() => {
+    const now = Date.now();
+    const staleThreshold = 30000; // 30 seconds
+    
+    for (const [key, { lastSeen }] of activeUsers.entries()) {
+      if (now - lastSeen > staleThreshold) {
+        activeUsers.delete(key);
+        io.emit('server:user:disconnected', { id: key });
+        console.log(`[Stale] Removed inactive user: ${key}`);
+      }
+    }
+  }, 30000);
+
   io.attach(server);
 
   io.on('connection', async (socket) => {
     const token = socket.handshake.auth?.token;
     let displayName = null;
+    let userId = null;
 
     if (token) {
       const decoded = await verifyToken(token);
@@ -121,23 +142,28 @@ async function main() {
           });
           const info = await r.json();
           displayName = info.name || info.email?.split('@')[0] || null;
+          userId = info.sub;
         } catch {}
       }
     }
 
     socket.displayName = displayName;
-    console.log(`[Socket:${socket.id}] connected as ${displayName ?? 'guest'}`);
+    socket.userId = userId;
+    console.log(`[Socket:${socket.id}] connected as ${displayName ?? 'guest'} (userId: ${userId || 'none'})`);
 
     socket.on('client:location:update', async ({ latitude, longitude }) => {
+      const key = userId || socket.id;
       await kafkaProducer.send({
         topic: 'location-updates',
         messages: [{
-          key: socket.id,
+          key,
           value: JSON.stringify({
-            id: socket.id,
+            userId: userId || null,
+            socketId: socket.id,
             name: socket.displayName,
             latitude,
             longitude,
+            timestamp: Date.now(),
           }),
         }],
       });
