@@ -65,7 +65,9 @@
         if (!email) return '';
         const [local, domain] = email.split('@');
         const [d, ...rest] = domain.split('.');
-        return `${local[0]}${'*'.repeat(Math.max(local.length - 1, 3))}@${'*'.repeat(d.length)}.${rest.join('.')}`;
+        const visibleLocal = local.slice(0, 4);
+        const maskedLocal = visibleLocal + '**';
+        return `${maskedLocal}@**${rest.join('.')}`;
       }
 
       function saveAuth(accessToken, refreshToken, user) {
@@ -199,7 +201,9 @@
 
       function placeMarker(lat, lng) {
         const user = getUser();
+        console.log('[placeMarker] user:', user, 'email:', user?.email);
         const letter = (user?.email || 'Y')[0];
+        console.log('[placeMarker] letter:', letter);
         socket.emit('client:location:update', { latitude: lat, longitude: lng });
         if (!myMarker) {
           myMarker = L.marker([lat, lng], { icon: makeLetterIcon(letter, true) })
