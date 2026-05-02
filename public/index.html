@@ -84,18 +84,16 @@
 
       function updateNav(user) {
         const userInfo = document.getElementById('userInfo');
-        const loginBtn = document.getElementById('loginBtn');
-        const signupBtn = document.getElementById('signupBtn');
+        const authBtn = document.getElementById('authBtn');
         
         if (user) {
           userInfo.innerHTML = `${user.name} <button id="logoutBtn" style="margin-left:10px;padding:4px 8px;cursor:pointer;background:#e74c3c;color:white;border:none;border-radius:4px">Logout</button>`;
-          loginBtn.style.display = 'none';
-          signupBtn.style.display = 'none';
+          authBtn.style.display = 'none';
           document.getElementById('logoutBtn').addEventListener('click', logout);
         } else {
           userInfo.textContent = '';
-          loginBtn.style.display = 'inline-block';
-          signupBtn.style.display = 'inline-block';
+          authBtn.style.display = 'inline-block';
+          authBtn.textContent = 'Login';
         }
       }
 
