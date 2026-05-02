@@ -97,18 +97,23 @@
       (async () => {
         const params = new URLSearchParams(window.location.search);
         const code = params.get('code');
+        console.log('[callback] code:', code, 'search:', window.location.search);
         if (code) {
+          console.log('[callback] sending code to /auth/callback');
           const res = await fetch('/auth/callback', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ code }),
           });
           const data = await res.json();
+          console.log('[callback] server response:', res.status, data);
           if (data.access_token) {
             const uRes = await fetch(`${AUTH_API}/oauth/userinfo`, {
               headers: { Authorization: `Bearer ${data.access_token}` },
             });
-            saveAuth(data.access_token, data.refresh_token, await uRes.json());
+            const user = await uRes.json();
+            console.log('[callback] user:', user);
+            saveAuth(data.access_token, data.refresh_token, user);
           }
           window.history.replaceState({}, '', '/');
         }

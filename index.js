@@ -32,22 +32,27 @@ async function main() {
   // Exchange auth code for tokens (server-side, keeps client_secret safe)
   app.post('/auth/callback', async (req, res) => {
     const { code } = req.body;
+    console.log('[/auth/callback] code received:', code?.slice(0, 10) + '...');
     if (!code) return res.status(400).json({ error: 'code required' });
     try {
+      const body = {
+        grant_type: 'authorization_code',
+        code,
+        client_id: CLIENT_ID,
+        client_secret: CLIENT_SECRET,
+        redirect_uri: `${req.protocol}://${req.get('host')}/auth/callback`,
+      };
+      console.log('[/auth/callback] exchanging with redirect_uri:', body.redirect_uri);
       const r = await fetch(`${AUTH_API}/oauth/token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          grant_type: 'authorization_code',
-          code,
-          client_id: CLIENT_ID,
-          client_secret: CLIENT_SECRET,
-          redirect_uri: `${req.protocol}://${req.get('host')}/auth/callback`,
-        }),
+        body: JSON.stringify(body),
       });
       const data = await r.json();
+      console.log('[/auth/callback] token response status:', r.status, JSON.stringify(data).slice(0, 100));
       res.status(r.status).json(data);
     } catch (e) {
+      console.error('[/auth/callback] error:', e.message);
       res.status(500).json({ error: 'token exchange failed' });
     }
   });
