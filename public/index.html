@@ -83,8 +83,24 @@
       }
 
       function updateNav(user) {
-        document.getElementById('userInfo').textContent = user ? maskEmail(user.email) : '';
-        document.getElementById('authBtn').textContent = user ? 'Logout' : 'Login';
+        const userInfo = document.getElementById('userInfo');
+        const loginBtn = document.getElementById('loginBtn');
+        const signupBtn = document.getElementById('signupBtn');
+        
+        if (user) {
+          userInfo.innerHTML = `${user.name} <button onclick="logout()" style="margin-left:10px;padding:4px 8px;cursor:pointer;background:#e74c3c;color:white;border:none;border-radius:4px">Logout</button>`;
+          loginBtn.style.display = 'none';
+          signupBtn.style.display = 'none';
+        } else {
+          userInfo.textContent = '';
+          loginBtn.style.display = 'inline-block';
+          signupBtn.style.display = 'inline-block';
+        }
+      }
+
+      function logout() {
+        clearAuth();
+        location.reload();
       }
 
       function makeLetterIcon(letter, isMe = false) {
@@ -201,13 +217,11 @@
 
       function placeMarker(lat, lng) {
         const user = getUser();
-        console.log('[placeMarker] user:', user, 'email:', user?.email);
-        const letter = (user?.email || 'Y')[0];
-        console.log('[placeMarker] letter:', letter);
+        const letter = (user?.name || 'Y')[0];
         socket.emit('client:location:update', { latitude: lat, longitude: lng });
         if (!myMarker) {
           myMarker = L.marker([lat, lng], { icon: makeLetterIcon(letter, true) })
-            .addTo(map).bindPopup(maskEmail(user?.email) || 'You').openPopup();
+            .addTo(map).bindPopup(user?.name || 'You').openPopup();
           map.setView([lat, lng], 15);
         } else {
           myMarker.setLatLng([lat, lng]);
