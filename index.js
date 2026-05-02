@@ -40,7 +40,7 @@ async function main() {
         code,
         client_id: CLIENT_ID,
         client_secret: CLIENT_SECRET,
-        redirect_uri: `${req.protocol}://${req.get('host')}/auth/callback`,
+        redirect_uri: `https://${req.get('host')}/auth/callback`,
       };
       console.log('[/auth/callback] exchanging with redirect_uri:', body.redirect_uri);
       const r = await fetch(`${AUTH_API}/oauth/token`, {
