@@ -3,86 +3,335 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Location Sharing Application</title>
-    <link
-      rel="stylesheet"
-      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-      crossorigin=""
-    />
+    <title>OnSpot</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
     <style>
-      #map {
-        height: calc(100vh - 60px);
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body { font-family: sans-serif; }
+
+      nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 16px;
+        height: 48px;
+        background: #1a1a2e;
+        color: white;
       }
+      nav .logo { font-weight: 700; font-size: 18px; letter-spacing: 1px; }
+      nav button {
+        padding: 6px 16px;
+        border: 1px solid #fff;
+        background: transparent;
+        color: white;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      nav button:hover { background: rgba(255,255,255,0.1); }
+
+      #map { height: calc(100vh - 48px); }
+
+      /* Modal */
+      .modal-overlay {
+        display: none;
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+      }
+      .modal-overlay.open { display: flex; }
+      .modal {
+        background: white;
+        border-radius: 12px;
+        padding: 32px;
+        width: 340px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .modal h2 { font-size: 20px; margin-bottom: 4px; }
+      .modal input {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 14px;
+      }
+      .modal button[type=submit] {
+        padding: 10px;
+        background: #1a1a2e;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 15px;
+      }
+      .modal button[type=submit]:disabled { opacity: 0.6; cursor: default; }
+      .modal .error { color: #e53e3e; font-size: 13px; min-height: 18px; }
+      .modal .switch { font-size: 13px; color: #555; text-align: center; }
+      .modal .switch a { color: #1a1a2e; cursor: pointer; text-decoration: underline; }
+      .modal .close-btn {
+        align-self: flex-end;
+        background: none;
+        border: none;
+        font-size: 20px;
+        cursor: pointer;
+        color: #888;
+        padding: 0;
+        line-height: 1;
+      }
+
+      #shareBtn { margin: 8px 16px; }
     </style>
   </head>
   <body>
-    <div style="text-align:center;padding:8px">
-      <button id="startBtn" style="padding:10px 24px;font-size:16px">Share My Location</button>
+    <nav>
+      <span class="logo">OnSpot</span>
+      <button id="authBtn">Login</button>
+    </nav>
+
+    <div style="padding:8px 16px">
+      <button id="startBtn" style="padding:8px 20px;font-size:15px;cursor:pointer">Share My Location</button>
     </div>
+
     <div id="map"></div>
-    <script
-      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-      crossorigin=""
-    ></script>
+
+    <!-- Login Modal -->
+    <div class="modal-overlay" id="loginOverlay">
+      <div class="modal">
+        <button class="close-btn" id="loginClose">&times;</button>
+        <h2>Sign in</h2>
+        <form id="loginForm">
+          <input type="email" id="loginEmail" placeholder="Email" required />
+          <input type="password" id="loginPassword" placeholder="Password" required />
+          <div class="error" id="loginError"></div>
+          <button type="submit" id="loginSubmit">Sign in</button>
+        </form>
+        <div class="switch">No account? <a id="showSignup">Sign up</a></div>
+      </div>
+    </div>
+
+    <!-- Signup Modal -->
+    <div class="modal-overlay" id="signupOverlay">
+      <div class="modal">
+        <button class="close-btn" id="signupClose">&times;</button>
+        <h2>Create account</h2>
+        <form id="signupForm">
+          <input type="text" id="signupName" placeholder="Name" required />
+          <input type="email" id="signupEmail" placeholder="Email" required />
+          <input type="password" id="signupPassword" placeholder="Password" required />
+          <div class="error" id="signupError"></div>
+          <button type="submit" id="signupSubmit">Sign up</button>
+        </form>
+        <div class="switch">Have an account? <a id="showLogin">Sign in</a></div>
+      </div>
+    </div>
+
+    <!-- Callback page handler (hidden) -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script src="/socket.io/socket.io.js"></script>
-
     <script>
-      const socket = io();
-      const map = L.map('map').setView([51.505, -0.09], 13);
+      const AUTH_API = 'https://auth.sudohq.me';
 
-      const remoteMarkers = new Map();
+      // --- Auth helpers ---
+      const getToken   = () => localStorage.getItem('access_token');
+      const getRefresh = () => localStorage.getItem('refresh_token');
+      const getUser    = () => JSON.parse(localStorage.getItem('auth_user') || 'null');
 
-      socket.on('server:location:update', (data) => {
-        const { id, latitude, longitude } = data;
-        if (!remoteMarkers.has(id)) {
-          const marker = L.marker([latitude, longitude])
-            .addTo(map)
-            .bindPopup(id);
-          remoteMarkers.set(id, marker);
+      function saveAuth(accessToken, refreshToken, user) {
+        localStorage.setItem('access_token', accessToken);
+        if (refreshToken) localStorage.setItem('refresh_token', refreshToken);
+        localStorage.setItem('auth_user', JSON.stringify(user));
+        updateAuthBtn(user);
+      }
+
+      function clearAuth() {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('auth_user');
+        updateAuthBtn(null);
+      }
+
+      async function refreshAccessToken() {
+        const refresh = getRefresh();
+        if (!refresh) return null;
+        try {
+          const res = await fetch('/auth/refresh', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refresh_token: refresh }),
+          });
+          const data = await res.json();
+          if (data.access_token) {
+            localStorage.setItem('access_token', data.access_token);
+            if (data.refresh_token) localStorage.setItem('refresh_token', data.refresh_token);
+            return data.access_token;
+          }
+        } catch {}
+        return null;
+      }
+
+      function updateAuthBtn(user) {
+        const btn = document.getElementById('authBtn');
+        if (user) {
+          btn.textContent = (user.name || user.email || 'User').slice(0, 12) + ' (logout)';
         } else {
-          const existingMarker = remoteMarkers.get(id);
-          existingMarker.setLatLng([latitude, longitude]); // This line is not updating UI
-        }
-      });
-
-      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution:
-          '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-      }).addTo(map);
-
-      let myCurrentLocationMarker = null;
-
-      function placeMarker(latitude, longitude) {
-        socket.emit('client:location:update', { latitude, longitude });
-        if (!myCurrentLocationMarker) {
-          myCurrentLocationMarker = L.marker([latitude, longitude])
-            .addTo(map)
-            .bindPopup('You are here')
-            .openPopup();
-          map.setView([latitude, longitude], 15);
-        } else {
-          myCurrentLocationMarker.setLatLng([latitude, longitude]);
-          map.setView([latitude, longitude], map.getZoom());
+          btn.textContent = 'Login';
         }
       }
 
-      function main() {
-        if (!('geolocation' in navigator)) {
-          alert('Geolocation is not available in this browser');
-          return;
+      // Handle OAuth callback code in URL
+      (async () => {
+        const params = new URLSearchParams(window.location.search);
+        const code = params.get('code');
+        const state = params.get('state');
+        if (code) {
+          if (state !== sessionStorage.getItem('oauth_state')) {
+            console.error('State mismatch');
+          } else {
+            const res = await fetch('/auth/callback', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ code }),
+            });
+            const data = await res.json();
+            if (data.access_token) {
+              // Get user info
+              const uRes = await fetch(`${AUTH_API}/oauth/userinfo`, {
+                headers: { Authorization: `Bearer ${data.access_token}` },
+              });
+              const user = await uRes.json();
+              saveAuth(data.access_token, data.refresh_token, user);
+            }
+          }
+          // Clean URL
+          window.history.replaceState({}, '', '/');
         }
+      })();
 
+      updateAuthBtn(getUser());
+
+      // --- Auth button ---
+      document.getElementById('authBtn').addEventListener('click', () => {
+        if (getUser()) { clearAuth(); return; }
+        document.getElementById('loginOverlay').classList.add('open');
+      });
+
+      // --- Modal controls ---
+      document.getElementById('loginClose').addEventListener('click', () =>
+        document.getElementById('loginOverlay').classList.remove('open'));
+      document.getElementById('signupClose').addEventListener('click', () =>
+        document.getElementById('signupOverlay').classList.remove('open'));
+      document.getElementById('showSignup').addEventListener('click', () => {
+        document.getElementById('loginOverlay').classList.remove('open');
+        document.getElementById('signupOverlay').classList.add('open');
+      });
+      document.getElementById('showLogin').addEventListener('click', () => {
+        document.getElementById('signupOverlay').classList.remove('open');
+        document.getElementById('loginOverlay').classList.add('open');
+      });
+      document.getElementById('loginOverlay').addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) e.currentTarget.classList.remove('open');
+      });
+      document.getElementById('signupOverlay').addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) e.currentTarget.classList.remove('open');
+      });
+
+      // --- Login form: use OAuth authorize flow ---
+      document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('loginSubmit');
+        const err = document.getElementById('loginError');
+        btn.disabled = true; btn.textContent = 'Signing in...';
+        err.textContent = '';
+
+        const state = crypto.randomUUID();
+        sessionStorage.setItem('oauth_state', state);
+
+        const url = new URL(`${AUTH_API}/oauth/authorize`);
+        url.searchParams.set('client_id', '__CLIENT_ID__');
+        url.searchParams.set('redirect_uri', `${location.origin}/callback`);
+        url.searchParams.set('response_type', 'code');
+        url.searchParams.set('state', state);
+        url.searchParams.set('email', document.getElementById('loginEmail').value);
+        url.searchParams.set('password', document.getElementById('loginPassword').value);
+
+        window.location.href = url.toString();
+      });
+
+      // --- Signup form: direct signup then authorize ---
+      document.getElementById('signupForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('signupSubmit');
+        const err = document.getElementById('signupError');
+        btn.disabled = true; btn.textContent = 'Creating account...';
+        err.textContent = '';
+        try {
+          const res = await fetch(`${AUTH_API}/auth/signup`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: document.getElementById('signupName').value,
+              email: document.getElementById('signupEmail').value,
+              password: document.getElementById('signupPassword').value,
+            }),
+          });
+          const data = await res.json();
+          if (!res.ok) { err.textContent = data.error || 'Signup failed'; return; }
+
+          saveAuth(data.accessToken, data.refreshToken, data.user);
+          document.getElementById('signupOverlay').classList.remove('open');
+        } catch {
+          err.textContent = 'Network error';
+        } finally {
+          btn.disabled = false; btn.textContent = 'Sign up';
+        }
+      });
+
+      // --- Map & Socket ---
+      const map = L.map('map').setView([20.5937, 78.9629], 5);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      }).addTo(map);
+
+      const remoteMarkers = new Map();
+
+      const socket = io({ auth: { token: getToken() } });
+
+      socket.on('server:location:update', ({ id, name, latitude, longitude }) => {
+        const label = name || id.slice(0, 8);
+        if (!remoteMarkers.has(id)) {
+          const marker = L.marker([latitude, longitude]).addTo(map).bindPopup(label);
+          remoteMarkers.set(id, marker);
+        } else {
+          remoteMarkers.get(id).setLatLng([latitude, longitude]);
+        }
+      });
+
+      let myMarker = null;
+
+      function placeMarker(latitude, longitude) {
+        const user = getUser();
+        const label = user ? (user.name || user.email?.split('@')[0] || 'You') : 'You';
+        socket.emit('client:location:update', { latitude, longitude });
+        if (!myMarker) {
+          myMarker = L.marker([latitude, longitude]).addTo(map).bindPopup(label).openPopup();
+          map.setView([latitude, longitude], 15);
+        } else {
+          myMarker.setLatLng([latitude, longitude]);
+        }
+      }
+
+      function startSharing() {
+        if (!('geolocation' in navigator)) { alert('Geolocation not available'); return; }
         navigator.geolocation.watchPosition(
-          (position) => placeMarker(position.coords.latitude, position.coords.longitude),
+          (pos) => placeMarker(pos.coords.latitude, pos.coords.longitude),
           (err) => {
             console.warn('Geolocation error:', err.message);
-            // Click on map to manually set your location
-            map.once('click', (e) => {
-              placeMarker(e.latlng.lat, e.latlng.lng);
-            });
+            map.once('click', (e) => placeMarker(e.latlng.lat, e.latlng.lng));
             const info = L.control({ position: 'topright' });
             info.onAdd = () => {
               const div = L.DomUtil.create('div');
@@ -96,7 +345,7 @@
         );
       }
 
-      document.getElementById('startBtn').addEventListener('click', main);
+      document.getElementById('startBtn').addEventListener('click', startSharing);
     </script>
   </body>
 </html>
