@@ -1,0 +1,106 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: sans-serif; }
+
+nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  height: 48px;
+  background: #1a1a2e;
+  color: white;
+  gap: 12px;
+}
+nav .logo { font-weight: 700; font-size: 18px; letter-spacing: 1px; flex: 1; }
+#userInfo { font-size: 13px; color: #ccc; white-space: nowrap; }
+nav button {
+  padding: 6px 14px;
+  border: 1px solid #fff;
+  background: transparent;
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  white-space: nowrap;
+}
+nav button:hover { background: rgba(255,255,255,0.1); }
+
+.share-bar {
+  padding: 8px 16px;
+  background: #f5f5f5;
+  border-bottom: 1px solid #ddd;
+  height: 48px;
+  display: flex;
+  align-items: center;
+}
+.share-bar button {
+  padding: 8px 20px;
+  font-size: 14px;
+  cursor: pointer;
+  background: #1a1a2e;
+  color: white;
+  border: none;
+  border-radius: 6px;
+}
+.share-bar button:disabled { opacity: 0.6; cursor: default; }
+
+#map { height: calc(100vh - 96px); }
+
+.letter-marker {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: #1a1a2e;
+  color: white;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 15px;
+  border: 2px solid white;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+}
+.letter-marker.me { background: #e53e3e; }
+
+.modal-overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: white;
+  border-radius: 12px;
+  padding: 32px;
+  width: 340px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.modal h2 { font-size: 20px; margin-bottom: 4px; }
+.modal .subtitle { font-size: 13px; color: #e53e3e; min-height: 18px; }
+.modal input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+}
+.modal button[type=submit] {
+  padding: 10px;
+  background: #1a1a2e;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 15px;
+}
+.modal button[type=submit]:disabled { opacity: 0.6; cursor: default; }
+.modal .error { color: #e53e3e; font-size: 13px; min-height: 18px; }
+.modal .switch { font-size: 13px; color: #555; text-align: center; }
+.modal .switch a { color: #1a1a2e; cursor: pointer; text-decoration: underline; }
+.modal .close-btn {
+  align-self: flex-end;
+  background: none; border: none;
+  font-size: 20px; cursor: pointer;
+  color: #888; padding: 0; line-height: 1;
+}
