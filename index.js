@@ -42,7 +42,7 @@ async function main() {
           code,
           client_id: CLIENT_ID,
           client_secret: CLIENT_SECRET,
-          redirect_uri: `${req.protocol}://${req.get('host')}/callback`,
+          redirect_uri: `${req.protocol}://${req.get('host')}/auth/callback`,
         }),
       });
       const data = await r.json();
@@ -138,10 +138,14 @@ async function main() {
     });
   });
 
+  app.get('/config', (req, res) => {
+    res.json({ clientId: CLIENT_ID });
+  });
+
   app.use(express.static(path.resolve('./public')));
 
   // OAuth redirect lands here — serve the SPA so JS can pick up ?code=
-  app.get('/callback', (req, res) => {
+  app.get('/auth/callback', (req, res) => {
     res.sendFile(path.resolve('./public/index.html'));
   });
 
