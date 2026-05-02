@@ -88,9 +88,10 @@
         const signupBtn = document.getElementById('signupBtn');
         
         if (user) {
-          userInfo.innerHTML = `${user.name} <button onclick="logout()" style="margin-left:10px;padding:4px 8px;cursor:pointer;background:#e74c3c;color:white;border:none;border-radius:4px">Logout</button>`;
+          userInfo.innerHTML = `${user.name} <button id="logoutBtn" style="margin-left:10px;padding:4px 8px;cursor:pointer;background:#e74c3c;color:white;border:none;border-radius:4px">Logout</button>`;
           loginBtn.style.display = 'none';
           signupBtn.style.display = 'none';
+          document.getElementById('logoutBtn').addEventListener('click', logout);
         } else {
           userInfo.textContent = '';
           loginBtn.style.display = 'inline-block';
