@@ -121,6 +121,7 @@ document.getElementById('signupForm').addEventListener('submit', async e => {
     if (!res.ok) { err.textContent = data.error || 'Signup failed'; return; }
     saveAuth(data.accessToken, data.refreshToken, data.user);
     document.getElementById('signupOverlay').classList.remove('open');
+    location.reload();
   } catch { err.textContent = 'Network error'; }
   finally { btn.disabled = false; btn.textContent = 'Sign up'; }
 });
