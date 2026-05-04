@@ -1,5 +1,6 @@
 const AUTH_API = 'https://auth.sudohq.me';
-const CLIENT_ID = '1911e05231e7401afafe836d4d39e271';
+let CLIENT_ID;
+fetch('/config').then(r => r.json()).then(cfg => { CLIENT_ID = cfg.clientId; });
 
 const getToken = () => localStorage.getItem('access_token');
 const getUser = () => JSON.parse(localStorage.getItem('auth_user') || 'null');
