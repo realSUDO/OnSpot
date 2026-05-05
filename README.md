@@ -3,7 +3,7 @@
 A real-time location sharing application built with Kafka event streaming, Socket.IO, and OAuth 2.0 authentication. Users can share their live location and see others moving on a map in real-time.
 
 **Live Demo:** https://onspot.sudohq.me  
-**Demo Video:** [YouTube Link - Coming Soon]
+**Demo Video:** https://www.youtube.com/shorts/SEnoMRppMgM
 
 ---
 
